@@ -1,11 +1,16 @@
 package main
 
 import (
+	"crypto/tls"
 	"embed"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
+	"time"
+
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 //go:embed frontend/*
@@ -24,6 +29,7 @@ func SetupRoutes() {
 	// API Endpoints
 	apiRouter.HandleFunc("/api/config", handleConfig)
 	apiRouter.HandleFunc("/api/ha/entities", handleHAEntities)
+	apiRouter.HandleFunc("/api/mqtt/test", handleMQTTTest)
 
 	// Combine into main mux
 	http.Handle("/api/", apiRouter)
@@ -79,4 +85,56 @@ func handleHAEntities(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(entities)
+}
+
+func handleMQTTTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var testConfig Config
+	if err := json.NewDecoder(r.Body).Decode(&testConfig); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if testConfig.MqttHost == "" {
+		http.Error(w, "Host is required", http.StatusBadRequest)
+		return
+	}
+
+	protocol := "tcp"
+	if testConfig.MqttSSL {
+		protocol = "tls"
+	}
+	brokerURL := "tcp://" + testConfig.MqttHost + ":" + fmt.Sprint(testConfig.MqttPort)
+	if testConfig.MqttSSL {
+		brokerURL = "tls://" + testConfig.MqttHost + ":" + fmt.Sprint(testConfig.MqttPort)
+	}
+
+	opts := mqtt.NewClientOptions()
+	opts.AddBroker(brokerURL)
+	opts.SetClientID("lockd2-addon-test")
+	opts.SetUsername(testConfig.MqttUser)
+	opts.SetPassword(testConfig.MqttPass)
+	// Rövid timeout a teszthez
+	opts.SetConnectTimeout(3 * time.Second)
+
+	if testConfig.MqttSSL {
+		opts.SetTLSConfig(&tls.Config{InsecureSkipVerify: true})
+	}
+
+	client := mqtt.NewClient(opts)
+	token := client.Connect()
+	if token.Wait() && token.Error() != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"status": "error", "message": "` + token.Error().Error() + `"}`))
+		return
+	}
+
+	// Siker, bontjuk a kapcsolatot
+	client.Disconnect(250)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status": "ok"}`))
 }

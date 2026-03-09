@@ -50,10 +50,16 @@ func InitMQTT() {
 		log.Printf("Lost connecton to MQTT broker: %v", err)
 	}
 
+    if MqttClient != nil && MqttClient.IsConnected() {
+        MqttClient.Disconnect(250)
+    }
+
 	MqttClient = mqtt.NewClient(opts)
-	if token := MqttClient.Connect(); token.Wait() && token.Error() != nil {
-		log.Printf("Failed to connect to MQTT on boot: %v", token.Error())
-	}
+	go func() {
+		if token := MqttClient.Connect(); token.Wait() && token.Error() != nil {
+			log.Printf("Failed to connect to MQTT in background: %v", token.Error())
+		}
+	}()
 }
 
 func SubscribeAll() {

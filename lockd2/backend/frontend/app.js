@@ -56,16 +56,44 @@ async function saveConfig() {
         if (res.ok) {
             alert("Beállítások sikeresen mentve!");
         } else {
-            alert("Hiba mentés közben!");
+            const errText = await res.text();
+            alert("Hiba mentés közben: " + errText);
         }
     } catch (e) {
-        alert("Hiba: " + e.message);
+        alert("Hiba a hálózaton: " + e.message);
     }
 }
 
-function testMQTT() {
-    // Később meg lehet csinálni a backendben egy külön API végpontot, ami csak rápróbál a host/portra.
-    alert("Ez a funkció a végleges verzióban próbál csatlakozni az MQTT-hez (jelenleg a Mentés gomb egyből újra is csatlakozik).");
+async function testMQTT() {
+    const testConfig = {
+        mqtt_host: document.getElementById('mqttHost').value,
+        mqtt_port: parseInt(document.getElementById('mqttPort').value),
+        mqtt_user: document.getElementById('mqttUser').value,
+        mqtt_pass: document.getElementById('mqttPass').value,
+        mqtt_ssl: document.getElementById('mqttSSL').checked
+    };
+
+    if (!testConfig.mqtt_host) {
+        alert("Kérlek adj meg egy Host címet!");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/mqtt/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(testConfig)
+        });
+
+        const data = await res.json();
+        if (res.ok && data.status === 'ok') {
+            alert("✅ Sikeres csatlakozás az MQTT szerverhez!");
+        } else {
+            alert("❌ Sikertelen csatlakozás: " + (data.message || "Ismeretlen hiba"));
+        }
+    } catch (e) {
+        alert("Hiba a tesztelés során: " + e.message);
+    }
 }
 
 function renderEntityList() {
@@ -80,7 +108,7 @@ function renderEntityList() {
     appConfig.locks.forEach((lock, idx) => {
         const div = document.createElement('div');
         div.className = `entity-list-item ${lock.enabled ? '' : 'disabled'}`;
-        
+
         let subText = `Entitás: ${lock.entity_id} | Topic: /locks/${lock.topic_suffix}`;
         if (lock.mode === 'pulse') subText += ` | Mód: Pulse (${lock.pulse_duration}s)`;
 
@@ -109,7 +137,7 @@ function populateDropdowns() {
     haEntities.forEach(e => {
         const name = e.attributes.friendly_name ? `${e.attributes.friendly_name} (${e.entity_id})` : e.entity_id;
         const opt = new Option(name, e.entity_id);
-        
+
         if (e.entity_id.startsWith('sensor.')) {
             batterySelect.add(opt);
         } else {
@@ -126,7 +154,7 @@ function toggleBattery() {
 function checkEntityType() {
     const val = document.getElementById('editHaEntity').value;
     const modeContainer = document.getElementById('modeContainer');
-    
+
     // Ha switch-et választott, mutassuk a mode választót (Toggle/Pulse)
     if (val.startsWith('switch.')) {
         modeContainer.classList.remove('hidden');
@@ -140,7 +168,7 @@ function checkEntityType() {
 function checkModeType() {
     const mode = document.getElementById('editMode').value;
     const pulseContainer = document.getElementById('pulseContainer');
-    
+
     if (mode === 'pulse') {
         pulseContainer.classList.remove('hidden');
     } else {
@@ -158,7 +186,7 @@ function showAddModal() {
     document.getElementById('editTopicSuffix').value = '';
     document.getElementById('editMode').value = 'toggle';
     document.getElementById('editPulseDuration').value = '2';
-    
+
     toggleBattery();
     checkEntityType();
 
@@ -201,7 +229,7 @@ function saveEntity() {
         // Edit 
         const extList = appConfig.locks;
         const index = extList.findIndex(l => l.id === idVal);
-        if(index > -1) {
+        if (index > -1) {
             lockData.enabled = extList[index].enabled; // preserve state
             extList[index] = lockData;
         }
@@ -220,7 +248,7 @@ function toggleEntity(idx) {
 }
 
 function deleteEntity(idx) {
-    if(confirm("Biztosan törölni szeretnéd az entitást?")) {
+    if (confirm("Biztosan törölni szeretnéd az entitást?")) {
         appConfig.locks.splice(idx, 1);
         saveConfig();
     }
@@ -233,10 +261,10 @@ function editEntity(idx) {
     document.getElementById('editName').value = lock.name;
     document.getElementById('editHaEntity').value = lock.entity_id;
     document.getElementById('editTopicSuffix').value = lock.topic_suffix;
-    
+
     document.getElementById('hasBattery').checked = !!lock.battery_entity;
     document.getElementById('editBatteryEntity').value = lock.battery_entity || '';
-    
+
     document.getElementById('editMode').value = lock.mode || 'toggle';
     document.getElementById('editPulseDuration').value = lock.pulse_duration || 2;
 
