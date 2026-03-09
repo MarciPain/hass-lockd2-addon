@@ -104,10 +104,7 @@ func handleMQTTTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	protocol := "tcp"
-	if testConfig.MqttSSL {
-		protocol = "tls"
-	}
+
 	brokerURL := "tcp://" + testConfig.MqttHost + ":" + fmt.Sprint(testConfig.MqttPort)
 	if testConfig.MqttSSL {
 		brokerURL = "tls://" + testConfig.MqttHost + ":" + fmt.Sprint(testConfig.MqttPort)
