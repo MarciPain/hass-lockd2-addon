@@ -1,0 +1,27 @@
+name: "Lockd2"
+description: "Home Assistant addon for lockd-go2 with custom Ingress Web UI"
+version: "1.0.0"
+slug: "lockd2"
+init: false
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8099
+ingress_stream: true
+panel_icon: mdi:lock-smart
+panel_title: "Lockd2"
+host_network: false
+hassio_api: true
+hassio_role: default
+options: {}
+map:
+  - config:rw
+  - addon_config:rw
+ports:
+  8099/tcp: 8099
