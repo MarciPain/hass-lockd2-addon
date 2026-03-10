@@ -17,22 +17,19 @@ import (
 var frontendEmbed embed.FS
 
 func SetupRoutes() {
-	// Serve static files from the embedded frontend folder
+	mux := http.DefaultServeMux
+
+	// API Endpoints – ezeket ELŐBB kell regisztrálni, mint a "/" catch-all-t
+	mux.HandleFunc("/api/config", handleConfig)
+	mux.HandleFunc("/api/ha/entities", handleHAEntities)
+	mux.HandleFunc("/api/mqtt/test", handleMQTTTest)
+
+	// Serve static files from the embedded frontend folder – "/" catch-all, UTOLJÁRA
 	subFS, err := fs.Sub(frontendEmbed, "frontend")
 	if err != nil {
 		log.Fatalf("Failed to sub embedded frontend filesystem: %v", err)
 	}
-	http.Handle("/", http.FileServer(http.FS(subFS)))
-
-	apiRouter := http.NewServeMux()
-	
-	// API Endpoints
-	apiRouter.HandleFunc("/api/config", handleConfig)
-	apiRouter.HandleFunc("/api/ha/entities", handleHAEntities)
-	apiRouter.HandleFunc("/api/mqtt/test", handleMQTTTest)
-
-	// Combine into main mux
-	http.Handle("/api/", apiRouter)
+	mux.Handle("/", http.FileServer(http.FS(subFS)))
 }
 
 func handleConfig(w http.ResponseWriter, r *http.Request) {
@@ -63,6 +60,7 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 		// Re-initialize MQTT with new settings
 		InitMQTT()
 
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status": "ok"}`))
 		return
@@ -104,7 +102,6 @@ func handleMQTTTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	brokerURL := "tcp://" + testConfig.MqttHost + ":" + fmt.Sprint(testConfig.MqttPort)
 	if testConfig.MqttSSL {
 		brokerURL = "tls://" + testConfig.MqttHost + ":" + fmt.Sprint(testConfig.MqttPort)
@@ -116,7 +113,7 @@ func handleMQTTTest(w http.ResponseWriter, r *http.Request) {
 	opts.SetUsername(testConfig.MqttUser)
 	opts.SetPassword(testConfig.MqttPass)
 	// Rövid timeout a teszthez
-	opts.SetConnectTimeout(3 * time.Second)
+	opts.SetConnectTimeout(5 * time.Second)
 
 	if testConfig.MqttSSL {
 		opts.SetTLSConfig(&tls.Config{InsecureSkipVerify: true})
@@ -124,14 +121,22 @@ func handleMQTTTest(w http.ResponseWriter, r *http.Request) {
 
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
-	if token.Wait() && token.Error() != nil {
+	token.Wait()
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if token.Error() != nil {
+		// Biztonságos JSON encoding – nincs string concatenation!
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"status": "error", "message": "` + token.Error().Error() + `"}`))
+		json.NewEncoder(w).Encode(map[string]string{
+			"status":  "error",
+			"message": token.Error().Error(),
+		})
 		return
 	}
 
 	// Siker, bontjuk a kapcsolatot
 	client.Disconnect(250)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status": "ok"}`))
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
