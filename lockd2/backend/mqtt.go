@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -75,10 +76,72 @@ func SubscribeAll() {
 		if !lock.Enabled {
 			continue
 		}
-		topic := fmt.Sprintf("locks/%s/+", lock.TopicSuffix)
-		// Itt a jövőben tudjuk kezelni a lockd-go2-től érkező visszajelzéseket (statuszokat)
-		MqttClient.Subscribe(topic, 1, func(c mqtt.Client, m mqtt.Message) {
-			log.Printf("Received message on topic %s: %s", m.Topic(), string(m.Payload()))
-		})
+		
+		topicSuffix := lock.TopicSuffix
+		cmdTopic := fmt.Sprintf("locks/%s/cmd", topicSuffix)
+
+		// Command handler
+		MqttClient.Subscribe(cmdTopic, 1, handleMQTTMessage(lock))
+
+		// Küldjük ki az "online" állapotot bekapcsoláskor (Zárva/Nyitva helyett, mint az ESPHome on_boot)
+		PublishState(topicSuffix, "online")
+
+		// Lekérdezzük a kezdeti állapotot HA-ból
+		go FetchAndPublishState(lock)
 	}
+}
+
+func handleMQTTMessage(lock LockEntity) mqtt.MessageHandler {
+	return func(c mqtt.Client, m mqtt.Message) {
+		cmd := strings.ToUpper(strings.TrimSpace(string(m.Payload())))
+		log.Printf("Received cmd '%s' on %s", cmd, m.Topic())
+
+		domain := "lock"
+		if strings.HasPrefix(lock.EntityID, "switch.") {
+			domain = "switch"
+		}
+
+		switch cmd {
+		case "LOCK", "ON":
+			if domain == "switch" {
+				CallHAService("switch", "turn_on", lock.EntityID)
+			} else {
+				CallHAService("lock", "lock", lock.EntityID)
+			}
+		case "UNLOCK", "OFF":
+			if domain == "switch" {
+				CallHAService("switch", "turn_off", lock.EntityID)
+			} else {
+				CallHAService("lock", "unlock", lock.EntityID)
+			}
+		case "STATUS":
+			PublishStatusAck(lock.TopicSuffix)
+			FetchAndPublishState(lock)
+		}
+	}
+}
+
+func PublishState(topicSuffix, state string) {
+	if MqttClient == nil || !MqttClient.IsConnected() {
+		return
+	}
+	topic := fmt.Sprintf("locks/%s/state", topicSuffix)
+	MqttClient.Publish(topic, 1, true, state) // retain = true
+}
+
+func PublishBatt(topicSuffix, batt string) {
+	if MqttClient == nil || !MqttClient.IsConnected() {
+		return
+	}
+	topic := fmt.Sprintf("locks/%s/batt", topicSuffix)
+	MqttClient.Publish(topic, 1, true, batt) // retain = true
+}
+
+func PublishStatusAck(topicSuffix string) {
+	if MqttClient == nil || !MqttClient.IsConnected() {
+		return
+	}
+	topic := fmt.Sprintf("locks/%s/status_ack", topicSuffix)
+	payload := fmt.Sprintf("ACK %d", time.Now().Unix())
+	MqttClient.Publish(topic, 1, false, payload) // retain = false
 }

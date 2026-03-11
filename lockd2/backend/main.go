@@ -23,6 +23,7 @@ func main() {
 
 	// HA API inicializálása
 	InitHAAPI()
+	StartHAWebSocket()
 
 	// Ha van beállított MQTT, akkor csatlakozunk
 	if AppConfig.MqttHost != "" {

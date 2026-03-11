@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -168,4 +171,121 @@ func filterEntities(entities []HAEntity) []HAEntity {
 
 func hasPrefix(s, prefix string) bool {
 	return len(s) >= len(prefix) && s[0:len(prefix)] == prefix
+}
+
+func CallHAService(domain, service, entityID string) error {
+	if haToken == "" {
+		return fmt.Errorf("no supervisor token available")
+	}
+
+	urlStr := fmt.Sprintf("http://supervisor/core/api/services/%s/%s", domain, service)
+	payload := map[string]string{"entity_id": entityID}
+	bodyData, _ := json.Marshal(payload)
+
+	req, err := http.NewRequest("POST", urlStr, bytes.NewBuffer(bodyData))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+haToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Failed to call service %s/%s on %s: %v", domain, service, entityID, err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		err := fmt.Errorf("HA service call %s/%s returned %s: %s", domain, service, resp.Status, string(respBody))
+		log.Println(err)
+		return err
+	}
+
+	log.Printf("Called HA service %s/%s for %s successfully", domain, service, entityID)
+	return nil
+}
+
+func FetchHAState(entityID string) (string, error) {
+	if haToken == "" {
+		return "", fmt.Errorf("no supervisor token available")
+	}
+
+	urlStr := "http://supervisor/core/api/states/" + entityID
+	req, err := http.NewRequest("GET", urlStr, nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+haToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("status: %s", resp.Status)
+	}
+
+	bodyData, _ := io.ReadAll(resp.Body)
+	var data HAEntity
+	if err := json.Unmarshal(bodyData, &data); err != nil {
+		return "", err
+	}
+
+	return data.State, nil
+}
+
+func FetchAndPublishState(lock LockEntity) {
+	if lock.EntityID != "" {
+		state, err := FetchHAState(lock.EntityID)
+		if err == nil && state != "" {
+			isSwitch := strings.HasPrefix(lock.EntityID, "switch.")
+			PublishState(lock.TopicSuffix, mapHAStateToHu(state, isSwitch))
+		}
+	}
+	if lock.BatteryEntity != "" {
+		batt, err := FetchHAState(lock.BatteryEntity)
+		if err == nil && batt != "" {
+			// Battery is parsed as float usually, we send just the integer version (ESPHome format: %.0f)
+			if fval, parseErr := strconv.ParseFloat(batt, 64); parseErr == nil {
+				PublishBatt(lock.TopicSuffix, fmt.Sprintf("%.0f", fval))
+			} else {
+				PublishBatt(lock.TopicSuffix, batt)
+			}
+		}
+	}
+}
+
+func mapHAStateToHu(state string, isSwitch bool) string {
+	switch state {
+	case "locked":
+		return "Zárva"
+	case "unlocked":
+		return "Nyitva"
+	case "on":
+		if isSwitch {
+			return "ON"
+		}
+		return "Zárva"
+	case "off":
+		if isSwitch {
+			return "OFF"
+		}
+		return "Nyitva"
+	case "locking":
+		return "Zárás..."
+	case "unlocking":
+		return "Nyitás..."
+	case "unavailable", "unknown":
+		return "Ismeretlen"
+	}
+	return state
 }
