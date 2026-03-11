@@ -15,7 +15,17 @@ var haToken string
 func InitHAAPI() {
 	haToken = os.Getenv("SUPERVISOR_TOKEN")
 	if haToken == "" {
-		log.Println("WARNING: SUPERVISOR_TOKEN is not set. HA Entity discovery will not work outside of addon container.")
+		haToken = os.Getenv("HASSIO_TOKEN")
+	}
+
+	if haToken == "" {
+		log.Println("WARNING: Supervisor token is not set. HA Entity discovery will not work.")
+		log.Println("Available env vars:")
+		for _, e := range os.Environ() {
+			log.Println(e) // This might be too much, but we need to see what's there
+		}
+	} else {
+		log.Println("HA API initialized with Supervisor Token.")
 	}
 }
 
@@ -29,8 +39,16 @@ type HAEntity struct {
 }
 
 func getHAEntities() ([]HAEntity, error) {
+	// Re-check token in case it was set late
 	if haToken == "" {
-		// Mock data for local testing outside container
+		haToken = os.Getenv("SUPERVISOR_TOKEN")
+		if haToken == "" {
+			haToken = os.Getenv("HASSIO_TOKEN")
+		}
+	}
+
+	if haToken == "" {
+		// Mock data for local testing...
 		return []HAEntity{
 			{EntityID: "lock.front_door", Attributes: struct{FriendlyName string `json:"friendly_name,omitempty"`}{FriendlyName: "Front Door"}},
 			{EntityID: "switch.gate", Attributes: struct{FriendlyName string `json:"friendly_name,omitempty"`}{FriendlyName: "Gate Relay"}},
@@ -50,12 +68,14 @@ func getHAEntities() ([]HAEntity, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Printf("Error calling HA API: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Superivsor API returned status: %s", resp.Status)
+		log.Printf("HA API returned non-OK status: %s", resp.Status)
+		return nil, fmt.Errorf("Supervisor API returned status: %s", resp.Status)
 	}
 
 	body, err := io.ReadAll(resp.Body)

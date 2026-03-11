@@ -1,6 +1,6 @@
 name: "Lockd2"
 description: "Home Assistant addon for lockd-go2 with custom Ingress Web UI"
-version: "1.0.6"
+version: "1.0.7"
 slug: "lockd2"
 init: false
 arch:
