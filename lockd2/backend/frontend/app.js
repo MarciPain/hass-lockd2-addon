@@ -58,6 +58,7 @@ async function saveConfig() {
         });
         if (res.ok) {
             alert("Beállítások sikeresen mentve!");
+            renderEntityList();
         } else {
             const errText = await res.text();
             alert("Hiba mentés közben: " + errText);
@@ -147,9 +148,9 @@ function populateDropdowns() {
         const name = e.attributes.friendly_name ? `${e.attributes.friendly_name} (${e.entity_id})` : e.entity_id;
         const opt = new Option(name, e.entity_id);
 
-        if (e.entity_id.startsWith('sensor.')) {
+        if (e.entity_id.startsWith('sensor.') && (e.entity_id.includes('battery') || e.entity_id.includes('akku') || e.entity_id.includes('elem'))) {
             batterySelect.add(opt);
-        } else {
+        } else if (!e.entity_id.startsWith('sensor.')) {
             mainSelect.add(opt);
         }
     });
