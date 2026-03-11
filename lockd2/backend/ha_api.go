@@ -21,8 +21,16 @@ func InitHAAPI() {
 	if haToken == "" {
 		log.Println("WARNING: Supervisor token is not set. HA Entity discovery will not work.")
 	} else {
-		log.Println("HA API initialized with Supervisor Token.")
+		// Log just the first few chars for safety if we really need to check if it's there
+		log.Printf("HA API initialized with Supervisor Token (starts with: %s...)", haToken[:min(5, len(haToken))])
 	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // HAEntity represents a simple Home Assistant state entity
@@ -53,6 +61,7 @@ func getHAEntities() ([]HAEntity, error) {
 	}
 
 	url := "http://supervisor/core/api/states"
+	log.Printf("Calling HA API: %s", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -60,6 +69,8 @@ func getHAEntities() ([]HAEntity, error) {
 
 	req.Header.Set("Authorization", "Bearer "+haToken)
 	req.Header.Set("X-HASSIO-KEY", haToken)
+	req.Header.Set("X-Supervisor-Token", haToken)
+	req.Header.Set("X-Hass-Source", "addon")
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 10 * time.Second}

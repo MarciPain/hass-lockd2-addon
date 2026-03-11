@@ -26,6 +26,9 @@ async function fetchHAEntities() {
         if (res.ok) {
             haEntities = await res.json();
             populateDropdowns();
+        } else {
+            const errText = await res.text();
+            alert("❌ Hiba az entitások lekérésekor: " + (errText || res.statusText));
         }
     } catch (e) {
         console.error("Failed to load HA entities", e);
