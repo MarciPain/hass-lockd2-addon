@@ -71,7 +71,8 @@ func getHAEntities() ([]HAEntity, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("HA API returned non-OK status: %s", resp.Status)
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("HA API returned non-OK status: %s, body: %s", resp.Status, string(body))
 		return nil, fmt.Errorf("Supervisor API returned status: %s", resp.Status)
 	}
 
