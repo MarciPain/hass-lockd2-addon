@@ -59,6 +59,7 @@ func getHAEntities() ([]HAEntity, error) {
 	}
 
 	req.Header.Set("Authorization", "Bearer "+haToken)
+	req.Header.Set("X-HASSIO-KEY", haToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 10 * time.Second}
