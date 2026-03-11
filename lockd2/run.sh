@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/usr/bin/with-contenv bashio
 set -e
 
-echo "Starting Lockd2 Addon..."
+bashio::log.info "Starting Lockd2 Addon..."
 
-# Elindul a Go backendünk
-exec /usr/bin/lockd2-addon
+# Elindul a Go backendünk a konténer környezeti változóival
+/usr/bin/lockd2-addon

@@ -20,10 +20,6 @@ func InitHAAPI() {
 
 	if haToken == "" {
 		log.Println("WARNING: Supervisor token is not set. HA Entity discovery will not work.")
-		log.Println("Available env vars:")
-		for _, e := range os.Environ() {
-			log.Println(e) // This might be too much, but we need to see what's there
-		}
 	} else {
 		log.Println("HA API initialized with Supervisor Token.")
 	}
