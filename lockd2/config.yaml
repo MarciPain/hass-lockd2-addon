@@ -1,6 +1,6 @@
 name: "Lockd2"
 description: "Home Assistant addon for lockd-go2 with custom Ingress Web UI"
-version: "1.0.11"
+version: "1.0.12"
 slug: "lockd2"
 init: false
 arch:
@@ -22,5 +22,4 @@ hassio_role: admin
 options: {}
 map:
   - config:rw
-ports:
 
