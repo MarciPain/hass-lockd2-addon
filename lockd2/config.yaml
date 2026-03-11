@@ -1,6 +1,6 @@
 name: "Lockd2"
 description: "Home Assistant addon for lockd-go2 with custom Ingress Web UI"
-version: "1.0.15"
+version: "1.0.16"
 slug: "lockd2"
 init: false
 arch:
@@ -18,7 +18,7 @@ panel_icon: mdi:lock-smart
 panel_title: "Lockd2"
 host_network: false
 hassio_api: true
-hassio_role: manager
+hassio_role: admin
 options: {}
 map:
   - config:rw

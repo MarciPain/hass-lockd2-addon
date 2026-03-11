@@ -42,6 +42,27 @@ type HAEntity struct {
 	} `json:"attributes,omitempty"`
 }
 
+func testSupervisorAPI() error {
+	url := "http://supervisor/info"
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Authorization", "Bearer "+haToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("Supervisor /info returned %s: %s", resp.Status, string(body))
+	}
+	log.Println("Supervisor API connectivity test: OK")
+	return nil
+}
+
 func getHAEntities() ([]HAEntity, error) {
 	// Re-check token in case it was set late
 	if haToken == "" {
@@ -60,56 +81,78 @@ func getHAEntities() ([]HAEntity, error) {
 		}, nil
 	}
 
-	// Probláljuk több útvonalon, hátha a Supervisor proxy máshogy viselkedik
+	// Teszteljük a Supervisor API-t először
+	if err := testSupervisorAPI(); err != nil {
+		log.Printf("Supervisor connectivity test FAILED: %v", err)
+	}
+
+	// Probláljuk több útvonalon és fejléc kombinációval
 	endpoints := []string{
 		"http://supervisor/core/api/states",
 		"http://supervisor/api/states",
 	}
 
+	headerSets := []map[string]string{
+		{"Authorization": "Bearer " + haToken},
+		{"X-HASSIO-KEY": haToken},
+		{"X-Supervisor-Token": haToken},
+	}
+
 	var lastErr error
 	for _, url := range endpoints {
-		log.Printf("Calling HA API: %s", url)
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			return nil, err
-		}
-
-		// Csak a legszükségesebb fejléc, néha a túl sok fejléc megzavarja a proxyt
-		req.Header.Set("Authorization", "Bearer "+haToken)
-		req.Header.Set("Content-Type", "application/json")
-
-		client := &http.Client{Timeout: 10 * time.Second}
-		resp, err := client.Do(req)
-		if err != nil {
-			log.Printf("Error calling HA API (%s): %v", url, err)
-			lastErr = err
-			continue
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode == http.StatusOK {
-			body, err := io.ReadAll(resp.Body)
+		for _, headers := range headerSets {
+			log.Printf("Calling HA API: %s with headers: %v", url, getHeaderNames(headers))
+			req, err := http.NewRequest("GET", url, nil)
 			if err != nil {
-				lastErr = err
-				continue
+				return nil, err
 			}
 
-			var entities []HAEntity
-			if err := json.Unmarshal(body, &entities); err != nil {
+			for k, v := range headers {
+				req.Header.Set(k, v)
+			}
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Printf("Error calling HA API (%s): %v", url, err)
 				lastErr = err
 				continue
 			}
-			
-			log.Printf("Successfully fetched %d entities from %s", len(entities), url)
-			return filterEntities(entities), nil
+			defer resp.Body.Close()
+
+			if resp.StatusCode == http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					lastErr = err
+					continue
+				}
+
+				var entities []HAEntity
+				if err := json.Unmarshal(body, &entities); err != nil {
+					lastErr = err
+					continue
+				}
+				
+				log.Printf("Successfully fetched %d entities from %s", len(entities), url)
+				return filterEntities(entities), nil
+			}
+
+			body, _ := io.ReadAll(resp.Body)
+			log.Printf("HA API (%s) failed with status %s, body: %s", url, resp.Status, string(body))
+			lastErr = fmt.Errorf("Supervisor API (%s) returned %s", url, resp.Status)
 		}
-
-		body, _ := io.ReadAll(resp.Body)
-		log.Printf("HA API (%s) returned non-OK status: %s, body: %s", url, resp.Status, string(body))
-		lastErr = fmt.Errorf("Supervisor API (%s) returned status: %s", url, resp.Status)
 	}
 
 	return nil, lastErr
+}
+
+func getHeaderNames(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func filterEntities(entities []HAEntity) []HAEntity {
