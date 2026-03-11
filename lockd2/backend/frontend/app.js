@@ -33,19 +33,19 @@ async function fetchHAEntities() {
 }
 
 function populateMainForm() {
-    document.getElementById('mqttHost').value = appConfig.MqttHost || '';
-    document.getElementById('mqttPort').value = appConfig.MqttPort || 1883;
-    document.getElementById('mqttUser').value = appConfig.MqttUser || '';
-    document.getElementById('mqttPass').value = appConfig.MqttPass || '';
-    document.getElementById('mqttSSL').checked = appConfig.MqttSSL || false;
+    document.getElementById('mqttHost').value = appConfig.mqtt_host || '';
+    document.getElementById('mqttPort').value = appConfig.mqtt_port || 1883;
+    document.getElementById('mqttUser').value = appConfig.mqtt_user || '';
+    document.getElementById('mqttPass').value = appConfig.mqtt_pass || '';
+    document.getElementById('mqttSSL').checked = appConfig.mqtt_ssl || false;
 }
 
 async function saveConfig() {
-    appConfig.MqttHost = document.getElementById('mqttHost').value;
-    appConfig.MqttPort = parseInt(document.getElementById('mqttPort').value);
-    appConfig.MqttUser = document.getElementById('mqttUser').value;
-    appConfig.MqttPass = document.getElementById('mqttPass').value;
-    appConfig.MqttSSL = document.getElementById('mqttSSL').checked;
+    appConfig.mqtt_host = document.getElementById('mqttHost').value;
+    appConfig.mqtt_port = parseInt(document.getElementById('mqttPort').value);
+    appConfig.mqtt_user = document.getElementById('mqttUser').value;
+    appConfig.mqtt_pass = document.getElementById('mqttPass').value;
+    appConfig.mqtt_ssl = document.getElementById('mqttSSL').checked;
 
     try {
         const res = await fetch('api/config', {
@@ -66,14 +66,14 @@ async function saveConfig() {
 
 async function testMQTT() {
     const testConfig = {
-        MqttHost: document.getElementById('mqttHost').value,
-        MqttPort: parseInt(document.getElementById('mqttPort').value),
-        MqttUser: document.getElementById('mqttUser').value,
-        MqttPass: document.getElementById('mqttPass').value,
-        MqttSSL: document.getElementById('mqttSSL').checked
+        mqtt_host: document.getElementById('mqttHost').value,
+        mqtt_port: parseInt(document.getElementById('mqttPort').value),
+        mqtt_user: document.getElementById('mqttUser').value,
+        mqtt_pass: document.getElementById('mqttPass').value,
+        mqtt_ssl: document.getElementById('mqttSSL').checked
     };
 
-    if (!testConfig.MqttHost) {
+    if (!testConfig.mqtt_host) {
         alert("Kérlek adj meg egy Host címet!");
         return;
     }
