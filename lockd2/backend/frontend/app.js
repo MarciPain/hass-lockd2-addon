@@ -42,7 +42,7 @@ function populateMainForm() {
 
 async function saveConfig() {
     appConfig.MqttHost = document.getElementById('mqttHost').value;
-    appConfig.MttPort = parseInt(document.getElementById('mqttPort').value);
+    appConfig.MqttPort = parseInt(document.getElementById('mqttPort').value);
     appConfig.MqttUser = document.getElementById('mqttUser').value;
     appConfig.MqttPass = document.getElementById('mqttPass').value;
     appConfig.MqttSSL = document.getElementById('mqttSSL').checked;
@@ -69,11 +69,11 @@ async function testMQTT() {
         MqttHost: document.getElementById('mqttHost').value,
         MqttPort: parseInt(document.getElementById('mqttPort').value),
         MqttUser: document.getElementById('mqttUser').value,
-        MttPass: document.getElementById('mqttPass').value,
+        MqttPass: document.getElementById('mqttPass').value,
         MqttSSL: document.getElementById('mqttSSL').checked
     };
 
-    if (!testConfig.mqtt_host) {
+    if (!testConfig.MqttHost) {
         alert("Kérlek adj meg egy Host címet!");
         return;
     }
@@ -274,4 +274,5 @@ function editEntity(idx) {
     document.getElementById('editModal').classList.remove('hidden');
     document.getElementById('modalBackdrop').classList.remove('hidden');
 }
+
 
