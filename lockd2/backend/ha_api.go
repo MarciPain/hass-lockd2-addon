@@ -60,43 +60,59 @@ func getHAEntities() ([]HAEntity, error) {
 		}, nil
 	}
 
-	url := "http://supervisor/core/api/states"
-	log.Printf("Calling HA API: %s", url)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
+	// Probláljuk több útvonalon, hátha a Supervisor proxy máshogy viselkedik
+	endpoints := []string{
+		"http://supervisor/core/api/states",
+		"http://supervisor/api/states",
 	}
 
-	req.Header.Set("Authorization", "Bearer "+haToken)
-	req.Header.Set("X-HASSIO-KEY", haToken)
-	req.Header.Set("X-Supervisor-Token", haToken)
-	req.Header.Set("X-Hass-Source", "addon")
-	req.Header.Set("Content-Type", "application/json")
+	var lastErr error
+	for _, url := range endpoints {
+		log.Printf("Calling HA API: %s", url)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, err
+		}
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("Error calling HA API: %v", err)
-		return nil, err
-	}
-	defer resp.Body.Close()
+		// Csak a legszükségesebb fejléc, néha a túl sok fejléc megzavarja a proxyt
+		req.Header.Set("Authorization", "Bearer "+haToken)
+		req.Header.Set("Content-Type", "application/json")
 
-	if resp.StatusCode != http.StatusOK {
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("Error calling HA API (%s): %v", url, err)
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				lastErr = err
+				continue
+			}
+
+			var entities []HAEntity
+			if err := json.Unmarshal(body, &entities); err != nil {
+				lastErr = err
+				continue
+			}
+			
+			log.Printf("Successfully fetched %d entities from %s", len(entities), url)
+			return filterEntities(entities), nil
+		}
+
 		body, _ := io.ReadAll(resp.Body)
-		log.Printf("HA API returned non-OK status: %s, body: %s", resp.Status, string(body))
-		return nil, fmt.Errorf("Supervisor API returned status: %s", resp.Status)
+		log.Printf("HA API (%s) returned non-OK status: %s, body: %s", url, resp.Status, string(body))
+		lastErr = fmt.Errorf("Supervisor API (%s) returned status: %s", url, resp.Status)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
+	return nil, lastErr
+}
 
-	var entities []HAEntity
-	if err := json.Unmarshal(body, &entities); err != nil {
-		return nil, err
-	}
-
+func filterEntities(entities []HAEntity) []HAEntity {
 	// Filter down to relevant entities for our UI to make payload smaller
 	var filtered []HAEntity
 	for _, e := range entities {
@@ -104,8 +120,7 @@ func getHAEntities() ([]HAEntity, error) {
 			filtered = append(filtered, e)
 		}
 	}
-
-	return filtered, nil
+	return filtered
 }
 
 func hasPrefix(s, prefix string) bool {
