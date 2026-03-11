@@ -1,6 +1,6 @@
 name: "Lockd2"
 description: "Home Assistant addon for lockd-go2 with custom Ingress Web UI"
-version: "1.0.3"
+version: "1.0.4"
 slug: "lockd2"
 init: false
 arch:
@@ -25,3 +25,4 @@ map:
   - addon_config:rw
 ports:
   8099/tcp: 8099
+
