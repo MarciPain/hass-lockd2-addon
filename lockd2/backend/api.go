@@ -16,18 +16,6 @@ import (
 //go:embed frontend/*
 var frontendEmbed embed.FS
 
-func ingressMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ingressPath := r.Header.Get("X-Hass-Ingress-Path")
-		if ingressPath != "" {
-			// Strip the ingress path from the URL
-			http.StripPrefix(ingressPath, next).ServeHTTP(w, r)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func SetupRoutes() {
 	mux := http.NewServeMux()
 
@@ -43,8 +31,7 @@ func SetupRoutes() {
 	}
 	mux.Handle("/", http.FileServer(http.FS(subFS)))
 
-	// Wrap the mux with the ingress middleware
-	http.Handle("/", ingressMiddleware(mux))
+	http.Handle("/", mux)
 }
 
 func handleConfig(w http.ResponseWriter, r *http.Request) {
