@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function fetchConfig() {
     try {
-        const res = await fetch('/api/config');
+        const res = await fetch('api/config');
         if (res.ok) {
             appConfig = await res.json();
             if (!appConfig.locks) appConfig.locks = [];
@@ -22,7 +22,7 @@ async function fetchConfig() {
 
 async function fetchHAEntities() {
     try {
-        const res = await fetch('/api/ha/entities');
+        const res = await fetch('api/ha/entities');
         if (res.ok) {
             haEntities = await res.json();
             populateDropdowns();
@@ -48,7 +48,7 @@ async function saveConfig() {
     appConfig.MqttSSL = document.getElementById('mqttSSL').checked;
 
     try {
-        const res = await fetch('/api/config', {
+        const res = await fetch('api/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(appConfig)
@@ -79,11 +79,17 @@ async function testMQTT() {
     }
 
     try {
-        const res = await fetch('/api/mqtt/test', {
+        const res = await fetch('api/mqtt/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(testConfig)
         });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            alert("❌ Hiba a tesztelés során: " + errText);
+            return;
+        }
 
         const data = await res.json();
         if (res.ok && data.status === 'ok') {
