@@ -1,22 +1,22 @@
-# Projekt Architektúra - hass-lockd2-addon
+# Project Architecture - hass-lockd2-addon
 
-## Aktuális állapot
-A projekt egy Home Assistant Addon, amely MQTT-n keresztül vezérel eszközöket. Legutóbb teljes mértékben implementálva lett az ESPHome-hoz hasonló MQTT publikálási logika, WebSocket kapcsolat a HA `state_changed` eseményeinek figyelésére, valamint kibővült az `app.js` entitásszűrője (akkumulátor/elem nevek kezelésével).
+## Current State
+The project is a Home Assistant Addon that controls devices via MQTT. Recently, MQTT publishing logic similar to ESPHome, a WebSocket connection for monitoring HA `state_changed` events, and an expanded entity filter in `app.js` (handling battery/power names) have been fully implemented.
 
-## Fejlesztési Irányok és Szabályok
-- **SZABÁLY:** Minden kódmódosítás után, még a Git push (vagy a tesztelés/felhasználónak való átadás) előtt a `lockd2/config.yaml`-ben **kötelező növelni a verziószámot**. Ennek hiányában az Addon nem fog frissülni a Home Assistantban.
-- MQTT kapcsolat stabilitásának biztosítása.
-- Home Assistant entitás felfedezés (Discovery) finomhangolása.
+## Development Directions and Rules
+- **RULE:** After every code modification, but before Git push (or delivery to testing/user), the version number MUST be increased in `lockd2/config.yaml`. Without this, the Addon will not update in Home Assistant.
+- Ensuring MQTT connection stability.
+- Fine-tuning Home Assistant entity discovery (Discovery).
 
-## Fájllista és funkciók
-- [lockd2/backend/api.go](./lockd2/backend/api.go): API végpontok és Ingress middleware.
-- [lockd2/backend/ha_api.go](./lockd2/backend/ha_api.go): Supervisor API integráció (illetve CallHAService implementáció zárak/kapcsolók vezérlésére) és hitelesítés.
-- [lockd2/backend/ha_ws.go](./lockd2/backend/ha_ws.go): ÚJ: Home Assistant WebSocket kliens az entitás `state_changed` eseményeinek valós idejű figyeléséhez.
-- [lockd2/backend/mqtt.go](./lockd2/backend/mqtt.go): MQTT kliens MQTT publikálással és parancs (`cmd`) fogadással (Zár/Nyit, ON/OFF logikával).
-- [lockd2/backend/frontend/app.js](./lockd2/backend/frontend/app.js): A beállító felület kliensoldali logikája az új `akku`/`elem` szűréssel és UI frissítéssel.
-- [lockd2/config.yaml](./lockd2/config.yaml): Addon konfiguráció.
-- [lockd2/run.sh](./lockd2/run.sh): Indító script bashio-val.
+## File List and Functions
+- [lockd2/backend/api.go](./lockd2/backend/api.go): API endpoints and Ingress middleware.
+- [lockd2/backend/ha_api.go](./lockd2/backend/ha_api.go): Supervisor API integration (CallHAService implementation for controlling locks/switches) and authentication.
+- [lockd2/backend/ha_ws.go](./lockd2/backend/ha_ws.go): NEW: Home Assistant WebSocket client for real-time monitoring of entity `state_changed` events.
+- [lockd2/backend/mqtt.go](./lockd2/backend/mqtt.go): MQTT client with MQTT publishing and command (`cmd`) reception (with Lock/Unlock, ON/OFF logic).
+- [lockd2/backend/frontend/app.js](./lockd2/backend/frontend/app.js): Client-side logic of the configuration interface with the new `battery`/`cell` filtering and UI update.
+- [lockd2/config.yaml](./lockd2/config.yaml): Addon configuration.
+- [lockd2/run.sh](./lockd2/run.sh): Startup script with bashio.
 
-## Kapcsolódó Projektek
-- [lockd-go2 Backend](https://github.com/MarciPain/lockd-go2): A központi backend.
-- [lockd2 Mobilapp](https://github.com/MarciPain/lockd2): A Flutter alapú kliens.
+## Related Projects
+- [lockd-go2 Backend](https://github.com/MarciPain/lockd-go2): The central backend.
+- [lockd2 Mobile App](https://github.com/MarciPain/lockd2): The Flutter-based client.
