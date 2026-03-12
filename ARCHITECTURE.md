@@ -20,3 +20,7 @@ The project is a Home Assistant Addon that controls devices via MQTT. Recently, 
 ## Related Projects
 - [lockd-go2 Backend](https://github.com/MarciPain/lockd-go2): The central backend.
 - [lockd2 Mobile App](https://github.com/MarciPain/lockd2): The Flutter-based client.
+
+---
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange.svg)](https://buymeacoffee.com/marcipain)
