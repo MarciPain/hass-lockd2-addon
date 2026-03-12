@@ -21,3 +21,11 @@ A Home Assistant addon for integrating the Lockd2 ecosystem. It provides a web i
 
 ## Technical Details
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed internal structure of the addon.
+
+---
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange.svg)](https://buymeacoffee.com/marcipain)
+
+---
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange.svg)](https://buymeacoffee.com/marcipain)
